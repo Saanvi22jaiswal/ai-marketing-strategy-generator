@@ -39,62 +39,38 @@ export default function StrategyPage() {
     setError(null)
     setProgress(0)
 
-    // Simulate progress
+    // Simulate progress for better UX
     const progressInterval = setInterval(() => {
-      setProgress(prev => Math.min(prev + Math.random() * 15, 90))
-    }, 500)
+      setProgress(prev => Math.min(prev + Math.random() * 10, 85))
+    }, 600)
 
     try {
+      console.log("[v0] Sending request to generate strategy...")
+      
       const response = await fetch("/api/generate-strategy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productInput: input })
       })
 
+      const data = await response.json()
+      
+      console.log("[v0] Response received:", data)
+
       if (!response.ok) {
-        throw new Error("Failed to generate strategy")
+        throw new Error(data.error || "Failed to generate strategy")
       }
 
-      const reader = response.body?.getReader()
-      if (!reader) throw new Error("No response body")
-
-      const decoder = new TextDecoder()
-      let fullContent = ""
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        fullContent += decoder.decode(value, { stream: true })
-      }
-
-      // Parse SSE data
-      const lines = fullContent.split("\n")
-      let jsonData = null
-
-      for (const line of lines) {
-        if (line.startsWith("data:")) {
-          const data = line.slice(5).trim()
-          if (data && data !== "[DONE]") {
-            try {
-              const parsed = JSON.parse(data)
-              if (parsed.type === "output" && parsed.output) {
-                jsonData = parsed.output
-              }
-            } catch {
-              // Continue parsing
-            }
-          }
-        }
-      }
-
-      if (jsonData) {
-        setStrategy(jsonData)
+      if (data.strategy) {
+        console.log("[v0] Strategy data received successfully")
+        setStrategy(data.strategy)
         setProgress(100)
       } else {
         throw new Error("No strategy data received")
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+      console.error("[v0] Error generating strategy:", err)
+      setError(err instanceof Error ? err.message : "Strategy generation failed. Please try again.")
     } finally {
       clearInterval(progressInterval)
       setIsLoading(false)
