@@ -45,8 +45,6 @@ export default function StrategyPage() {
     }, 600)
 
     try {
-      console.log("[v0] Sending request to generate strategy...")
-      
       const response = await fetch("/api/generate-strategy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -54,22 +52,18 @@ export default function StrategyPage() {
       })
 
       const data = await response.json()
-      
-      console.log("[v0] Response received:", data)
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to generate strategy")
       }
 
       if (data.strategy) {
-        console.log("[v0] Strategy data received successfully")
         setStrategy(data.strategy)
         setProgress(100)
       } else {
         throw new Error("No strategy data received")
       }
     } catch (err) {
-      console.error("[v0] Error generating strategy:", err)
       setError(err instanceof Error ? err.message : "Strategy generation failed. Please try again.")
     } finally {
       clearInterval(progressInterval)

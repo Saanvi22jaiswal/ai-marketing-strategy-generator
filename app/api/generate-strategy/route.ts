@@ -316,13 +316,20 @@ function generateFallbackStrategy(productInput: {
 }
 
 export async function POST(req: Request) {
+  let productInput: {
+    productName: string
+    productDescription: string
+    productCategory: string
+    priceRange: string
+    problemSolved: string
+    targetAudienceGuess?: string | null
+  } | null = null
+
   try {
-    const { productInput } = await req.json()
-    
-    console.log("[v0] Received product input:", productInput)
+    const body = await req.json()
+    productInput = body.productInput
 
     if (!productInput || !productInput.productName) {
-      console.log("[v0] Invalid product input received")
       return Response.json({ error: "Invalid product input" }, { status: 400 })
     }
 
@@ -360,8 +367,6 @@ ${productInput.targetAudienceGuess ? `**Target Audience Guess:** ${productInput.
 
 Please provide a comprehensive marketing strategy including market segmentation, customer personas, launch strategy, marketing channels, budget allocation, lifecycle strategy, and strategic recommendations.`
 
-    console.log("[v0] Calling AI model...")
-
     const result = await generateText({
       model: "anthropic/claude-sonnet-4",
       system: systemPrompt,
@@ -371,29 +376,17 @@ Please provide a comprehensive marketing strategy including market segmentation,
       })
     })
 
-    console.log("[v0] AI response received")
-
     if (result.experimental_output) {
-      console.log("[v0] Strategy generated successfully")
       return Response.json({ strategy: result.experimental_output })
     } else {
-      console.log("[v0] No output from AI, using fallback strategy")
       const fallbackStrategy = generateFallbackStrategy(productInput)
       return Response.json({ strategy: fallbackStrategy })
     }
-  } catch (error) {
-    console.error("[v0] Error generating strategy:", error)
-    
-    // Return fallback strategy on error
-    try {
-      const { productInput } = await req.clone().json()
-      if (productInput) {
-        console.log("[v0] Generating fallback strategy due to error")
-        const fallbackStrategy = generateFallbackStrategy(productInput)
-        return Response.json({ strategy: fallbackStrategy })
-      }
-    } catch {
-      // If we can't even parse the input, return a generic error
+  } catch {
+    // AI failed - use fallback strategy generation
+    if (productInput) {
+      const fallbackStrategy = generateFallbackStrategy(productInput)
+      return Response.json({ strategy: fallbackStrategy })
     }
     
     return Response.json(
